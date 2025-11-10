@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Online Event Booking (HTML only)</title>
+  <style>
+    /* Simple, self-contained styling */
+    :root{
+      --bg:#0f1724; --card:#0b1220; --muted:#9aa6b2; --accent:#06b6d4; --glass: rgba(255,255,255,0.03);
+      --white:#e6eef6;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(180deg,#071024 0%, #071428 100%); color:var(--white); -webkit-font-smoothing:antialiased;
+    }
+    .container{max-width:1100px;margin:28px auto;padding:20px;}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+    .logo{display:flex;gap:12px;align-items:center}
+    .logo .icon{width:48px;height:48px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#7dd3fc);display:flex;align-items:center;justify-content:center;font-weight:700;color:#042027}
+    h1{margin:0;font-size:20px}
+    .muted{color:var(--muted);font-size:14px}
+    .controls{display:flex;gap:8px;align-items:center}
+    input[type="search"], select{
+      background:var(--glass); border:1px solid rgba(255,255,255,0.04); color:var(--white);
+      padding:8px 10px;border-radius:8px; outline:none; min-width:160px;
+    }
+    button.btn{
+      background:linear-gradient(90deg,var(--accent),#7dd3fc); border:none;padding:9px 12px;border-radius:8px;color:#042027;font-weight:600;cursor:pointer;
+    }
+    main{display:grid;grid-template-columns:1fr 320px; gap:18px;}
+    /* event listing */
+    .events{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border:1px solid rgba(255,255,255,0.04); padding:12px; border-radius:10px; display:flex;flex-direction:column;
+    }
+    .card img{width:100%;height:140px;object-fit:cover;border-radius:8px}
+    .card h3{margin:10px 0 6px;font-size:16px}
+    .meta{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted)}
+    .price{font-weight:700;color:var(--white)}
+    .card-actions{display:flex;gap:8px;margin-top:10px}
+    .small{font-size:13px;padding:8px 10px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.03);color:var(--white);cursor:pointer}
+    /* sidebar */
+    aside{background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02)); padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
+    .aside-section{margin-bottom:14px}
+    .aside-section h4{margin:0 0 8px}
+    ul.bookings-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+    .booking-item{padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center;font-size:13px}
+    .empty{color:var(--muted);font-size:14px}
+    /* modal */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.7);display:none;align-items:center;justify-content:center;padding:20px;z-index:60}
+    .modal{background:#051023;padding:18px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);max-width:520px;width:100%}
+    label{display:block;font-size:13px;margin-bottom:6px;color:var(--muted)}
+    input[type="text"], input[type="email"], input[type="number"], textarea, select{
+      width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--white);margin-bottom:10px;
+    }
+    .row{display:flex;gap:10px}
+    .row .col{flex:1}
+    footer{margin-top:28px;text-align:center;color:var(--muted);font-size:13px}
+    /* responsive */
+    @media (max-width:900px){
+      main{grid-template-columns:1fr}
+      aside{order:2}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <div class="icon">EB</div>
+        <div>
+          <h1>EventBook — Online Event Booking</h1>
+          <div class="muted">Browse events · Book tickets · View your bookings</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <input id="search" type="search" placeholder="Search events (name or city)" aria-label="Search events" />
+        <select id="categoryFilter" title="Filter by category">
+          <option value="">All categories</option>
+          <option value="concert">Concert</option>
+          <option value="college">College</option>
+          <option value="workshop">Workshop</option>
+        </select>
+        <button id="viewBookingsBtn" class="btn">My Bookings</button>
+      </div>
+    </header>
+
+    <main>
+      <section>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h2 style="margin:0">Upcoming Events</h2>
+          <div class="muted" id="resultsInfo">Showing <strong id="count">0</strong> events</div>
+        </div>
+
+        <div class="events" id="eventsContainer">
+          <!-- Event cards injected here -->
+        </div>
+      </section>
+
+      <aside>
+        <div class="aside-section">
+          <h4>Quick Filters</h4>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <button class="small" onclick="setFilter('')">All</button>
+            <button class="small" onclick="setFilter('concert')">Concerts</button>
+            <button class="small" onclick="setFilter('college')">College</button>
+            <button class="small" onclick="setFilter('workshop')">Workshops</button>
+          </div>
+        </div>
+
+        <div class="aside-section">
+          <h4>Top Picks</h4>
+          <div class="card" style="padding:10px">
+            <strong>Indie Night Concert</strong>
+            <div class="muted" style="margin-top:6px">Sat, Nov 22 · 7:00 PM</div>
+            <div style="margin-top:8px"><button class="small" onclick="openBookingByEventId('evt-1')">Book Now</button></div>
+          </div>
+        </div>
+
+        <div class="aside-section">
+          <h4>Saved Bookings</h4>
+          <ul class="bookings-list" id="sidebarBookings">
+            <!-- small list -->
+          </ul>
+          <div id="noBookingsMsg" class="empty" style="margin-top:8px">No bookings yet</div>
+        </div>
+
+        <div class="aside-section">
+          <h4>About</h4>
+          <div class="muted">This is a static frontend demo using only HTML (with inline JS). Bookings are stored locally in your browser.</div>
+        </div>
+      </aside>
+    </main>
+
+    <footer>
+      Built with plain HTML — open <code>index.html</code> in your browser to run.
+    </footer>
+  </div>
+
+  <!-- Booking modal -->
+  <div id="modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal" role="document">
+      <h3 id="modalTitle">Book Tickets</h3>
+      <p class="muted" id="modalSubtitle" style="margin-top:6px">Complete details to reserve seats.</p>
+
+      <form id="bookingForm">
+        <input type="hidden" id="eventId" />
+        <div style="display:flex;gap:10px">
+          <div style="flex:1">
+            <label for="name">Full name</label>
+            <input id="name" type="text" required placeholder="Your name" />
+          </div>
+          <div style="flex:1">
+            <label for="email">Email</label>
+            <input id="email" type="email" required placeholder="you@example.com" />
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:6px">
+          <div class="col">
+            <label for="tickets">Tickets</label>
+            <input id="tickets" type="number" min="1" value="1" required />
+          </div>
+          <div class="col">
+            <label for="phone">Phone (optional)</label>
+            <input id="phone" type="text" placeholder="01234 567890" />
+          </div>
+        </div>
+
+        <label for="notes">Notes (optional)</label>
+        <textarea id="notes" rows="3" placeholder="Any special requests"></textarea>
+
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
+          <button type="button" class="small" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn">Confirm Booking</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- bookings list modal -->
+  <div id="bookingsModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal" role="document">
+      <h3>My Bookings</h3>
+      <p class="muted" style="margin-top:6px">Saved locally in your browser</p>
+
+      <div id="myBookingsList" style="margin-top:12px"></div>
+
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+        <button class="small" onclick="closeBookingsModal()">Close</button>
+        <button class="small" onclick="clearAllBookings()">Clear all</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---------- Sample events data ----------
+    const SAMPLE_EVENTS = [
+      { id: 'evt-1', title: 'Indie Night Concert', category: 'concert', city:'Chennai', date:'2025-11-22', time:'19:00', price:299, seats:150, img:null, desc:'Indie bands live on stage.' },
+      { id: 'evt-2', title: 'Robotics Workshop', category: 'workshop', city:'Bengaluru', date:'2025-12-05', time:'10:00', price:499, seats:40, img:null, desc:'Hands-on robotics with Raspberry Pi.' },
+      { id: 'evt-3', title: 'College Cultural Fest', category: 'college', city:'Madurai', date:'2025-12-12', time:'17:00', price:99, seats:400, img:null, desc:'Music, dance, and food stalls.' },
+      { id: 'evt-4', title: 'Jazz Evening', category: 'concert', city:'Mumbai', date:'2025-11-30', time:'18:30', price:599, seats:120, img:null, desc:'Smooth jazz by the river.' },
+      { id: 'evt-5', title: 'Web Dev Bootcamp', category: 'workshop', city:'Chennai', date:'2025-11-28', time:'09:30', price:799, seats:35, img:null, desc:'Learn HTML/CSS/JS from scratch.' }
+    ];
+
+    // ---------- DOM elements ----------
+    const eventsContainer = document.getElementById('eventsContainer');
+    const countEl = document.getElementById('count');
+    const searchInput = document.getElementById('search');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const sidebarBookings = document.getElementById('sidebarBookings');
+    const noBookingsMsg = document.getElementById('noBookingsMsg');
+    const modal = document.getElementById('modal');
+    const bookingsModal = document.getElementById('bookingsModal');
+    const bookingForm = document.getElementById('bookingForm');
+    const myBookingsList = document.getElementById('myBookingsList');
+    const viewBookingsBtn = document.getElementById('viewBookingsBtn');
+
+    // ---------- Utilities ----------
+    function formatDate(d){
+      try {
+        const dt = new Date(d);
+        return dt.toLocaleDateString();
+      } catch(e){ return d }
+    }
+    function loadBookings(){ return JSON.parse(localStorage.getItem('eb_bookings') || '[]') }
+    function saveBookings(b){ localStorage.setItem('eb_bookings', JSON.stringify(b)) }
+
+    // ---------- Render events ----------
+    function renderEvents(events){
+      eventsContainer.innerHTML = '';
+      if(!events.length){
+        eventsContainer.innerHTML = '<div class="empty" style="padding:18px;background:rgba(255,255,255,0.02);border-radius:8px">No events found.</div>';
+      }
+      events.forEach(e=>{
+        const card = document.createElement('div'); card.className='card';
+        const imgUrl = e.img || `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='600' height='360'><rect width='100%' height='100%' fill='%2302192b'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%237dd3fc' font-size='28'>${escapeHtml(e.title)}</text></svg>`)}`;
+        card.innerHTML = `
+          <img src="${imgUrl}" alt="${escapeHtml(e.title)}" />
+          <h3>${escapeHtml(e.title)}</h3>
+          <div class="meta"><div>${escapeHtml(e.city)} · ${formatDate(e.date)}</div><div class="price">₹${e.price}</div></div>
+          <div style="margin-top:8px;color:var(--muted);font-size:14px">${escapeHtml(e.desc)}</div>
+          <div class="card-actions">
+            <button class="small" onclick="openBookingByEventId('${e.id}')">Book</button>
+            <button class="small" onclick="viewDetails('${e.id}')">Details</button>
+          </div>
+        `;
+        eventsContainer.appendChild(card);
+      });
+      countEl.textContent = events.length;
+    }
+
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) }
+
+    function viewDetails(id){
+      const e = SAMPLE_EVENTS.find(x=>x.id===id);
+      if(!e) return alert('Event not found');
+      alert(`${e.title}\n\nWhen: ${formatDate(e.date)} @ ${e.time}\nWhere: ${e.city}\nPrice: ₹${e.price}\n\n${e.desc}`);
+    }
+
+    // ---------- Search & filter ----------
+    function applyFilters(){
+      const q = searchInput.value.trim().toLowerCase();
+      const cat = categoryFilter.value;
+      const filtered = SAMPLE_EVENTS.filter(ev=>{
+        const matchesQ = q === '' || ev.title.toLowerCase().includes(q) || ev.city.toLowerCase().includes(q) || ev.desc.toLowerCase().includes(q);
+        const matchesCat = !cat || ev.category === cat;
+        return matchesQ && matchesCat;
+      });
+      renderEvents(filtered);
+    }
+
+    searchInput.addEventListener('input', applyFilters);
+    categoryFilter.addEventListener('change', applyFilters);
+
+    function setFilter(cat){
+      categoryFilter.value = cat;
+      applyFilters();
+    }
+
+    // ---------- Booking modal ----------
+    function openBookingByEventId(id){
+      const e = SAMPLE_EVENTS.find(x=>x.id===id);
+      if(!e) return alert('Event not found');
+      document.getElementById('eventId').value = e.id;
+      document.getElementById('modalTitle').textContent = `Book: ${e.title}`;
+      document.getElementById('modalSubtitle').textContent = `${formatDate(e.date)} · ${e.city} · ₹${e.price} · ${e.seats} seats`;
+      document.getElementById('tickets').value = 1;
+      modal.style.display = 'flex';
+      modal.setAttribute('aria-hidden','false');
+    }
+
+    function closeModal(){
+      modal.style.display = 'none';
+      modal.setAttribute('aria-hidden','true');
+      bookingForm.reset();
+    }
+
+    bookingForm.addEventListener('submit', function(ev){
+      ev.preventDefault();
+      const id = document.getElementById('eventId').value;
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const tickets = parseInt(document.getElementById('tickets').value) || 1;
+      const phone = document.getElementById('phone').value.trim();
+      const notes = document.getElementById('notes').value.trim();
+
+      const event = SAMPLE_EVENTS.find(e=>e.id===id);
+      if(!event){ alert('Event not found'); return; }
+
+      // create booking
+      const booking = {
+        id: 'bk_' + Date.now(),
+        eventId: event.id,
+        eventTitle: event.title,
+        date: event.date,
+        time: event.time,
+        city: event.city,
+        price: event.price,
+        tickets,
+        name, email, phone, notes,
+        createdAt: new Date().toISOString()
+      };
+
+      const bookings = loadBookings();
+      bookings.push(booking);
+      saveBookings(bookings);
+
+      // update sidebar + close modal
+      refreshSidebarBookings();
+      closeModal();
+      alert('Booking confirmed! Your booking is saved locally in this browser.');
+    });
+
+    // ---------- Sidebar bookings ----------
+    function refreshSidebarBookings(){
+      const bookings = loadBookings();
+      sidebarBookings.innerHTML = '';
+      if(bookings.length===0){
+        noBookingsMsg.style.display = 'block';
+        sidebarBookings.style.display = 'none';
+      } else {
+        noBookingsMsg.style.display = 'none';
+        sidebarBookings.style.display = 'block';
+        const recent = bookings.slice(-4).reverse();
+        recent.forEach(b=>{
+          const li = document.createElement('li'); li.className='booking-item';
+          li.innerHTML = `<div><strong style="font-size:13px">${escapeHtml(b.eventTitle)}</strong><div class="muted" style="font-size:12px">${b.tickets} ticket(s) · ${formatDate(b.date)}</div></div>
+                          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px"><div style="font-weight:700">₹${b.price*b.tickets}</div><button class="small" style="padding:6px 8px" onclick="cancelBooking('${b.id}')">Cancel</button></div>`;
+          sidebarBookings.appendChild(li);
+        });
+      }
+    }
+
+    function cancelBooking(bid){
+      if(!confirm('Cancel this booking?')) return;
+      let bookings = loadBookings();
+      bookings = bookings.filter(b=>b.id!==bid);
+      saveBookings(bookings);
+      refreshSidebarBookings();
+      refreshBookingsModal();
+    }
+
+    // ---------- Bookings modal ----------
+    viewBookingsBtn.addEventListener('click', openBookingsModal);
+
+    function openBookingsModal(){
+      bookingsModal.style.display = 'flex';
+      bookingsModal.setAttribute('aria-hidden','false');
+      refreshBookingsModal();
+    }
+    function closeBookingsModal(){
+      bookingsModal.style.display = 'none';
+      bookingsModal.setAttribute('aria-hidden','true');
+      myBookingsList.innerHTML = '';
+    }
+
+    function refreshBookingsModal(){
+      const bookings = loadBookings().slice().reverse();
+      myBookingsList.innerHTML = '';
+      if(bookings.length===0){
+        myBookingsList.innerHTML = '<div class="empty">No bookings yet.</div>';
+        return;
+      }
+      const list = document.createElement('div');
+      list.style.display='flex'; list.style.flexDirection='column'; list.style.gap='10px';
+      bookings.forEach(b=>{
+        const el = document.createElement('div');
+        el.style.padding='10px'; el.style.borderRadius='8px'; el.style.background='rgba(255,255,255,0.02)'; el.style.display='flex'; el.style.justifyContent='space-between';
+        el.innerHTML = `<div>
+                          <strong>${escapeHtml(b.eventTitle)}</strong>
+                          <div class="muted" style="margin-top:6px">${b.tickets} ticket(s) · ${formatDate(b.date)} · ${escapeHtml(b.city)}</div>
+                          <div class="muted" style="margin-top:6px;font-size:13px">Booked by: ${escapeHtml(b.name)} · ${escapeHtml(b.email)}</div>
+                        </div>
+                        <div style="text-align:right;display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+                          <div style="font-weight:700">₹${b.price*b.tickets}</div>
+                          <div>
+                            <button class="small" onclick="downloadTicket('${b.id}')">Ticket</button>
+                            <button class="small" onclick="cancelBooking('${b.id}')">Cancel</button>
+                          </div>
+                        </div>`;
+        list.appendChild(el);
+      });
+      myBookingsList.appendChild(list);
+    }
+
+    function clearAllBookings(){
+      if(!confirm('Clear all bookings?')) return;
+      localStorage.removeItem('eb_bookings');
+      refreshSidebarBookings();
+      refreshBookingsModal();
+    }
+
+    // ---------- Small ticket download (text) ----------
+    function downloadTicket(bid){
+      const bookings = loadBookings();
+      const b = bookings.find(x=>x.id===bid);
+      if(!b) return alert('Booking not found');
+      const content = `EVENT TICKET\n\n${b.eventTitle}\nWhen: ${formatDate(b.date)} @ ${b.time}\nWhere: ${b.city}\nTickets: ${b.tickets}\nName: ${b.name}\nEmail: ${b.email}\nPrice: ₹${b.price*b.tickets}\n\n(Stored locally in your browser)`;
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${b.eventTitle.replace(/\s+/g,'_')}_ticket.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // ---------- Init ----------
+    (function init(){
+      renderEvents(SAMPLE_EVENTS);
+      refreshSidebarBookings();
+      applyFilters();
+      // close modals on backdrop click
+      modal.addEventListener('click', e=>{ if(e.target===modal) closeModal(); });
+      bookingsModal.addEventListener('click', e=>{ if(e.target===bookingsModal) closeBookingsModal(); });
+    })();
+  </script>
+</body>
+</html>
